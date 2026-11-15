@@ -81,3 +81,4 @@ up to date at the end of every milestone.
   fixtures are removed (then at 0): one rule, no surprise.
 - **Wall clock not used**: nothing in /data has a date.
 - **No `keywords`, no `countries`** (worldwide).
+- [ ] r2 mineurs : tests des gardes Blackout (attente /data app.js:539, plafond :551), minuteur d'attente /data non annulé (:492), allumer annulé après redémarrage non annoncé à 0.
