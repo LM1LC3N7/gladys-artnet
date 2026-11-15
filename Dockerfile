@@ -20,7 +20,7 @@ COPY package.json package-lock.json* ./
 RUN npm ci --omit=dev || npm install --omit=dev
 
 # Then the integration code.
-COPY index.js ./
+COPY index.js LICENSE THIRD_PARTY_NOTICES.md ./
 COPY src ./src
 COPY gladys-assistant-integration.json ./
 

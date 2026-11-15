@@ -1,67 +1,138 @@
-# Template de démonstration
+# Art-Net
 
-Ceci est la documentation utilisateur de l'intégration. Gladys ré-héberge ce
-fichier et affiche un lien **Documentation** permanent vers lui dans l'écran
-de configuration (dans la langue de l'utilisateur, avec l'anglais en repli) —
-c'est au moment de configurer que l'utilisateur en a le plus besoin. Gardez
-les courtes indications d'accueil dans les blocs `section` du `config_schema`
-du manifest ; mettez ici le pas-à-pas détaillé (captures d'écran, dépannage…).
+Pilote l’éclairage scénique DMX (gradateurs, projecteurs RGB, RGBW et blancs)
+depuis Gladys par un **nœud Art-Net** : le boîtier qui convertit votre réseau
+local en lignes DMX512. Tout reste sur le réseau local (port UDP 6454), sans
+compte et sans cloud.
 
-## Ce que vous obtenez
+> Cette intégration n’a **jamais été testée avec un vrai nœud** : seulement avec
+> un nœud simulé sur la même machine. Dites-nous comment elle se comporte avec
+> le vôtre. Elle est sans lien avec Artistic Licence ni avec une marque
+> d’éclairage.
 
-Six appareils de démonstration apparaissent après l'installation : une
-station météo (vraies données Open-Meteo), un interrupteur, une lampe
-variable, une prise connectée avec mesure de puissance, un détecteur de
-mouvement et une caméra.
+Art-Net™ Designed by and Copyright Artistic Licence Engineering Ltd.
+
+## Ce qu’il faut
+
+- Un nœud Art-Net (Art-Net 3 ou 4) sur votre réseau, avec une **adresse IP
+  fixe** (réglée dans votre box ou dans le nœud).
+- L’adresse DMX de chaque projecteur (réglée sur le projecteur : écran,
+  interrupteurs DIP) et l’univers de la ligne DMX où il est branché (réglé dans
+  le nœud).
 
 ## Configuration
 
-1. Ouvrez l'onglet **Configuration** de l'intégration.
-2. Renseignez la **latitude** et la **longitude** que la station météo de
-   démonstration doit observer (Paris par défaut), et choisissez votre unité
-   de température. L'**intervalle de rafraîchissement** règle la fréquence
-   de lecture de la station météo et de la puissance de la prise : toutes
-   les 5 minutes par défaut, toutes les minutes au plus.
-3. Enregistrez : les appareils apparaissent dans l'onglet **Découverte**,
-   prêts à être ajoutés.
+1. **Adresse IP du nœud** : l’adresse du nœud, par exemple `192.168.1.60`. Le
+   port est 6454, sauf si vous en ajoutez un autre (`192.168.1.60:6455`). Une
+   adresse de diffusion (finissant par `.255`, `2.255.255.255`…) est refusée :
+   Art-Net 4 envoie le DMX au nœud lui-même.
+2. **Projecteurs** : une entrée par projecteur, séparées par `;` :
+   `[univers/]adresse profil nom`. Exemple :
+   `1 rgb Salon; 0/4 dimmer Bar; 1/10 cct Bureau`.
+   - univers : 0 à 32767 (le Port-Address du nœud), 0 si omis ;
+   - adresse : 1 à 512, le premier canal DMX du projecteur ;
+   - profil : l’ordre de ses canaux :
 
-Le réglage **Préférer la connexion locale** pilote la prise de
-démonstration : elle affiche en badge le canal réellement utilisé (local ou
-cloud), avec un point orange quand elle fonctionne en mode dégradé (local
-refusé, bascule cloud).
+     | Profil   | Canaux                              | Fonctions dans Gladys                      |
+     | -------- | ----------------------------------- | ------------------------------------------ |
+     | `dimmer` | intensité                           | allumage, luminosité                       |
+     | `rgb`    | rouge, vert, bleu                   | allumage, luminosité, couleur              |
+     | `rgbw`   | rouge, vert, bleu, blanc            | allumage, luminosité, couleur              |
+     | `drgb`   | intensité, rouge, vert, bleu        | allumage, luminosité, couleur              |
+     | `drgbw`  | intensité, rouge, vert, bleu, blanc | allumage, luminosité, couleur              |
+     | `cct`    | blanc froid, blanc chaud            | allumage, luminosité, température du blanc |
 
-## Actions
+   - nom : 40 caractères au plus (facultatif : `Projecteur 0/4` sinon).
 
-- **Tester le fournisseur météo** — effectue une requête en direct vers
-  Open-Meteo et affiche la température et l'humidité actuelles sous le
-  bouton.
-- **Identifier un appareil** — choisissez un de vos appareils dans la liste
-  et il se signale (la lampe de démonstration « clignote » dans les logs).
+   Une entrée illisible, qui dépasse le canal 512 ou qui chevauche un
+   projecteur précédent est ignorée : le statut donne sa position et la raison.
+   64 projecteurs au plus, sur 16 univers.
 
-## Scènes
+3. **Langue des noms par défaut** : celle des noms donnés aux projecteurs sans
+   nom et aux fonctions.
 
-L'intégration ajoute ses propres cartes à l'éditeur de scènes (Gladys 5.1
-ou plus récent), dans la catégorie **Intégrations** :
+Enregistrez : les projecteurs apparaissent dans la **Découverte** (une lumière
+chacun). Ajoutez-les.
 
-- **Mouvement détecté** (déclencheur) — lance la scène quand un détecteur
-  de démonstration voit bouger quelque chose. Choisissez éventuellement le
-  détecteur et ce qui a bougé (personne, animal) ; laissés vides, toute
-  détection correspond. Les actions suivantes peuvent lire ce qui a bougé
-  avec `{{triggerEvent.data.target}}`.
-- **Identifier un appareil** (action) — fait se signaler l'appareil choisi.
-  Elle indique si l'appareil a pu se signaler, pour que les actions
-  suivantes puissent en dépendre.
+## État supposé
 
-## Tableau de bord
+Art-Net envoie le DMX dans un seul sens : un projecteur **ne renvoie jamais son
+état**. Gladys affiche la dernière commande envoyée, et le badge de chaque
+projecteur indique que l’état est supposé. Si quelqu’un change un projecteur
+avec une console ou ses propres boutons, Gladys ne le sait pas.
 
-Ajoutez le widget **État de la démo** à un tableau de bord : il affiche en
-direct la température de la station météo et la puissance de la prise du
-bureau, la connexion utilisée par la prise (en orange si dégradée) et la
-position observée. Son bouton **Identifier la lampe** fait se signaler la
-lampe de démonstration.
+Après un redémarrage de l’intégration, chaque projecteur est supposé **éteint** :
+rien n’est envoyé avant la première commande, et cette première commande envoie
+tout l’univers, donc les autres projecteurs de l’univers passent à 0 (Gladys les
+affiche éteints). Les canaux DMX d’un univers qui ne sont pas dans la liste des
+projecteurs sont envoyés à 0.
 
-## Dépannage
+## Envoi des trames
 
-L'intégration journalise tout ce qu'elle fait : consultez les logs de
-l'intégration depuis l'interface Gladys (ou `docker logs` sur l'hôte) avec
-`LOG_LEVEL=debug` pour le détail complet.
+- Un univers commence à être envoyé à la première commande, extinction ou
+  Blackout qui le touche. Sa trame (tout l’univers, du canal 1 au dernier canal
+  utilisé) part ensuite après chaque changement, au plus tôt 25 ms après la
+  précédente (40 trames par seconde au plus, la limite du DMX512 est 44), et de
+  nouveau toutes les 900 ms sans changement, comme Art-Net le demande, jusqu’à
+  l’arrêt de l’intégration.
+- Une trame part en unicast vers l’adresse du nœud, depuis le port 6454 s’il est
+  libre (sinon depuis un autre port, dit dans le statut : quelques nœuds
+  l’ignorent).
+- Une commande reçoit sa réponse une fois sa trame sortie de la carte réseau.
+  Si elle n’a pas pu partir (erreur réseau), allumage, luminosité, couleur et
+  température sont annulés et la réponse dit que rien n’a été envoyé.
+
+## Éteindre et Blackout
+
+« Éteindre » (allumage à 0, ou luminosité 0) met tous les canaux du projecteur
+à 0. **Blackout** (bouton de la configuration, et action de scène « Blackout
+Art-Net ») met à 0 tous les projecteurs connus et tous les univers déjà envoyés.
+
+Ils ne demandent aucune option ni configuration lue : l’adresse du nœud et les
+projecteurs sont aussi gardés dans `/data`, donc ils fonctionnent juste après un
+redémarrage, avant que Gladys donne la configuration. Si une trame ne peut pas
+partir, l’envoi de maintien toutes les 900 ms la réessaie jusqu’à ce qu’elle
+parte ; quand elle part enfin, Gladys apprend que le projecteur est éteint. Leurs
+seuls refus :
+
+- aucune adresse de nœud connue (aucune configurée, rien dans `/data`) ;
+- un projecteur inconnu de la configuration et de `/data` (« éteindre »
+  seulement) ;
+- aucun projecteur ni univers connu (Blackout seulement) ;
+- l’intégration est en train de s’arrêter.
+
+Si l’adresse du nœud devient invalide dans la configuration, « éteindre » et
+Blackout partent vers la dernière adresse valide.
+
+## Boutons
+
+- **Tester le nœud** : envoie un ArtPoll et affiche le nom que le nœud donne
+  dans son ArtPollReply (3 s au plus, une fois toutes les 10 s). Certains nœuds
+  ne répondent qu’au port 6454, ou jamais : cela n’empêche pas l’envoi des
+  trames DMX.
+- **Blackout (tous les projecteurs à 0)** : voir plus haut.
+
+## Statut
+
+- _Prêt : N projecteur(s), trames vers adresse:port_ : la configuration est
+  valide.
+- _Les trames ne partent pas vers … (code)_ : le réseau refuse les datagrammes
+  (câble, adresse) ; nouvel essai chaque seconde.
+- _Configuration non lue_ : Gladys ne l’a pas donnée, nouvel essai après 5 s,
+  puis jusqu’à toutes les 5 min.
+- _Entrées ignorées_ : la position et la raison de chaque entrée en erreur.
+- _Stockage /data illisible / non inscriptible_ : relu toutes les 10 s ;
+  jusque-là, « éteindre » et Blackout ont besoin de la configuration.
+
+## Limites
+
+- Un seul nœud. Plusieurs nœuds, la découverte ArtPoll, ArtSync et RDM ne sont
+  pas faits.
+- Canaux 8 bits seulement (pas de canaux « fins » 16 bits), pas de lyres, pas
+  d’effets.
+- Rien n’est relu : l’état est la dernière commande envoyée.
+
+## Vie privée
+
+Rien ne quitte votre réseau local. `/data` garde l’adresse du nœud et l’univers,
+l’adresse et le profil de chaque projecteur (pas leurs noms).

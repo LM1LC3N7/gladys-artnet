@@ -1,0 +1,200 @@
+[
+  {
+    "name": "off waits for the configuration",
+    "file": "src/app.js",
+    "from": "  async off(target, { fromBrightness = false } = {}) {\n    if (this.stopped) throw commandError(ERRORS.closed);",
+    "to": "  async off(target, { fromBrightness = false } = {}) {\n    if (this.stopped) throw commandError(ERRORS.closed);\n    if (!this.configRead) throw commandError(ERRORS.configUnread);"
+  },
+  {
+    "name": "off ignores the fixtures of /data",
+    "file": "src/app.js",
+    "from": "return this.configRead ? this.config.fixtures : (this.memory?.fixtures ?? []);",
+    "to": "return this.configRead ? this.config.fixtures : [];"
+  },
+  {
+    "name": "off ignores the node of /data",
+    "file": "src/app.js",
+    "from": "return this.config.node ?? this.memory?.node;",
+    "to": "return this.config.node;"
+  },
+  {
+    "name": "brightness 0 is not an off",
+    "file": "src/app.js",
+    "from": "if (checked === 0 && (target.key === FEATURES.BINARY || target.key === FEATURES.BRIGHTNESS)) {",
+    "to": "if (checked === 0 && target.key === FEATURES.BINARY) {"
+  },
+  {
+    "name": "a failed on is not undone",
+    "file": "src/app.js",
+    "from": "this.states.set(fixture.id, { ...fallback, version: (this.seq += 1) });",
+    "to": "void fallback;"
+  },
+  {
+    "name": "a failed on undone over a newer command",
+    "file": "src/app.js",
+    "from": "if (this.states.get(fixture.id)?.version === version) {",
+    "to": "if (true) {"
+  },
+  {
+    "name": "on accepted before the configuration is read",
+    "file": "src/app.js",
+    "from": "if (!this.configRead) throw commandError(ERRORS.configUnread);\n    if (!this.config.node)",
+    "to": "if (!this.config.node)"
+  },
+  {
+    "name": "a feature not on the profile accepted",
+    "file": "src/app.js",
+    "from": "if (!PROFILES[fixture.profile].features.includes(key)) {",
+    "to": "if (false) {"
+  },
+  {
+    "name": "fixtures never commanded not said off on the first frame",
+    "file": "src/app.js",
+    "from": "        this.publishAssumed(f, FEATURES.BINARY, 0);\n      }\n    }\n    return { ...result, issued: waiter.issued };",
+    "to": "      }\n    }\n    return { ...result, issued: waiter.issued };"
+  },
+  {
+    "name": "a late off not said to Gladys",
+    "file": "src/app.js",
+    "from": "        if (!this.stateOf(f.id).on) this.publishAssumed(f, FEATURES.BINARY, 0);\n      }\n    }\n    if (this.output.boundPort",
+    "to": "      }\n    }\n    if (this.output.boundPort"
+  },
+  {
+    "name": "blackout skips the universes already started",
+    "file": "src/app.js",
+    "from": "...this.output.active()])];",
+    "to": "])];"
+  },
+  {
+    "name": "blackout waits for the configuration",
+    "file": "src/app.js",
+    "from": "const fixtures = this.fixtures();\n    const universes",
+    "to": "const fixtures = this.configRead ? this.fixtures() : [];\n    const universes"
+  },
+  {
+    "name": "test reply accepted from any address",
+    "file": "src/app.js",
+    "from": "if (!waiter || remote?.address !== waiter.host) return;",
+    "to": "if (!waiter) return;"
+  },
+  {
+    "name": "test not spaced",
+    "file": "src/app.js",
+    "from": "if (mono - this.lastTestAt < this.timings.testSpacing) {",
+    "to": "if (false) {"
+  },
+  {
+    "name": "getConfig not tried again",
+    "file": "src/app.js",
+    "from": "if (!this.stopped) this.readConfig(getConfig);",
+    "to": "void getConfig;"
+  },
+  {
+    "name": "/data unreadable not read again",
+    "file": "src/app.js",
+    "from": "if (!this.stopped) this.loadMemory();",
+    "to": "void 0;"
+  },
+  {
+    "name": "frame length shrinks",
+    "file": "src/app.js",
+    "from": "Math.max(this.lengths.get(universe) ?? 0, needed)",
+    "to": "needed"
+  },
+  {
+    "name": "no gap between frames",
+    "file": "src/output.js",
+    "from": "const wait = Math.max(0, u.lastSentAt + this.timings.gap - this.monotonic());",
+    "to": "const wait = 0;"
+  },
+  {
+    "name": "no keep-alive",
+    "file": "src/output.js",
+    "from": "    }, this.timings.refresh);",
+    "to": "    }, 1e9);"
+  },
+  {
+    "name": "a change during a frame in flight is lost",
+    "file": "src/output.js",
+    "from": "    if (u.dirty) {\n      this.schedule(universe, u);\n      return;\n    }",
+    "to": "    if (false) {\n      return;\n    }"
+  },
+  {
+    "name": "frames after close",
+    "file": "src/output.js",
+    "from": "    if (this.closed) return;\n    this.onResult(universe, result);",
+    "to": "    this.onResult(universe, result);"
+  },
+  {
+    "name": "a new node does not get the universes",
+    "file": "src/output.js",
+    "from": "    for (const [universe, u] of this.universes) {\n      u.dirty = true;\n      this.schedule(universe, u);\n    }",
+    "to": ""
+  },
+  {
+    "name": "broadcast node accepted",
+    "file": "src/config.js",
+    "from": "    octets[3] === 255 ||",
+    "to": ""
+  },
+  {
+    "name": "overlapping fixtures accepted",
+    "file": "src/config.js",
+    "from": "  if (overlap) return 'overlap';",
+    "to": ""
+  },
+  {
+    "name": "fixture past channel 512 accepted",
+    "file": "src/config.js",
+    "from": "if (address + PROFILES[profile].channels - 1 > LIMITS.channels) return { error: 'overflow' };",
+    "to": ""
+  },
+  {
+    "name": "Net byte wrong",
+    "file": "src/protocol.js",
+    "from": "packet[15] = (universe >> 8) & 0x7f;",
+    "to": "packet[15] = 0;"
+  },
+  {
+    "name": "odd length accepted",
+    "file": "src/protocol.js",
+    "from": "if (length < 2 || length > LIMITS.channels || length % 2 !== 0) return undefined;",
+    "to": "if (length < 1 || length > LIMITS.channels) return undefined;"
+  },
+  {
+    "name": "short ArtPollReply accepted",
+    "file": "src/protocol.js",
+    "from": "if (opcodeOf(packet) !== OPCODES.POLL_REPLY || packet.length < POLL_REPLY_MIN) return undefined;",
+    "to": "if (opcodeOf(packet) !== OPCODES.POLL_REPLY) return undefined;"
+  },
+  {
+    "name": "control characters in node names",
+    "file": "src/protocol.js",
+    "from": "text += c >= 0x20 && c <= 0x7e ? String.fromCharCode(c) : ' ';",
+    "to": "text += String.fromCharCode(c);"
+  },
+  {
+    "name": "/data broadcast node accepted",
+    "file": "src/store.js",
+    "from": "const node = parsed && parsed.host === n.host && parsed.port === n.port ? parsed : undefined;",
+    "to": "const node = typeof n.host === 'string' ? { host: n.host, port: n.port } : undefined;"
+  },
+  {
+    "name": "an off is not the fallback of a later failure",
+    "file": "src/app.js",
+    "from": "    this.safe.set(fixture.id, state);\n",
+    "to": ""
+  },
+  {
+    "name": "an older frame overrides a newer off as fallback",
+    "file": "src/app.js",
+    "from": "if (state.version >= (this.safe.get(id)?.version ?? -1)) this.safe.set(id, state);",
+    "to": "this.safe.set(id, state);"
+  },
+  {
+    "name": "what left is not the fallback",
+    "file": "src/app.js",
+    "from": "if (state.version >= (this.safe.get(id)?.version ?? -1)) this.safe.set(id, state);",
+    "to": "void state;"
+  }
+]
