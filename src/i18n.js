@@ -143,8 +143,16 @@ export const T = {
     fr: `Blackout : ${sent} univers sur ${total} envoyé(s), les autres non (${code}) : nouvel essai chaque seconde.`,
   }),
   blackoutNothing: {
-    en: 'Blackout: no fixture known yet (configuration not read, /data empty): nothing sent.',
-    fr: 'Blackout : aucun projecteur connu pour l’instant (configuration non lue, /data vide) : rien envoyé.',
+    en: 'Blackout: no fixture known (none in the configuration or, before it is read, in /data): nothing sent.',
+    fr: 'Blackout : aucun projecteur connu (aucun dans la configuration ou, avant sa lecture, dans /data) : rien envoyé.',
+  },
+  blackoutStoreNotRead: {
+    en: 'Blackout: configuration not read and /data not read yet: nothing sent.',
+    fr: 'Blackout : configuration non lue et /data pas encore lu : rien envoyé.',
+  },
+  blackoutStoreUnreadable: {
+    en: 'Blackout: configuration not read and /data unreadable: nothing sent.',
+    fr: 'Blackout : configuration non lue et /data illisible : rien envoyé.',
   },
   closed: {
     en: 'The integration is stopping: nothing sent.',
@@ -163,6 +171,10 @@ export const ERRORS = {
   notConfigured: 'Node address not configured (nothing sent)',
   configUnread: 'Configuration not read yet (nothing sent)',
   notListed: 'This fixture is not in the configuration (nothing sent)',
+  notInStore: 'Configuration not read yet and this fixture is not in /data (nothing sent)',
+  storeNotRead: 'Configuration and /data not read yet (nothing sent)',
+  storeUnreadable: 'Configuration not read yet and /data unreadable (nothing sent)',
+  universes: 'Too many universes started in this session: restart the integration (nothing sent)',
   notThisProfile: 'This feature does not exist on the profile of this fixture (nothing sent)',
   closed: 'The integration is stopping (nothing sent)',
   unsent: (code) => `The frame did not leave (${code}): nothing sent`,

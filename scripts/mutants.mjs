@@ -30,12 +30,16 @@ function run(dir) {
   return new Promise((resolve) => {
     // eslint-disable-next-line no-unused-vars
     const { NODE_TEST_CONTEXT, ...env } = process.env;
-    const child = spawn(process.execPath, ['--test', '--test-timeout=60000', ...TESTS], {
-      cwd: dir,
-      env,
-      stdio: ['ignore', 'pipe', 'pipe'],
-      detached: true,
-    });
+    const child = spawn(
+      process.execPath,
+      ['--test', '--test-timeout=60000', '--test-force-exit', ...TESTS],
+      {
+        cwd: dir,
+        env,
+        stdio: ['ignore', 'pipe', 'pipe'],
+        detached: true,
+      },
+    );
     let out = '';
     child.stdout.on('data', (c) => (out += c));
     child.stderr.on('data', (c) => (out += c));

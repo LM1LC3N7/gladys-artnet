@@ -97,3 +97,11 @@ test('profiles: off is every channel at 0; on follows brightness, colour and tem
   assert.deepEqual(channelsOf('dimmer', on({ brightness: 400 })), [255]);
   assert.deepEqual(channelsOf('laser', on({})), []);
 });
+
+test('timings within Art-Net and Gladys bounds: keep-alive 800-1000 ms, at most 44 frames/s, answer under 5 s', async () => {
+  const { TIMINGS } = await import('../src/constants.js');
+  assert.ok(TIMINGS.refresh >= 800 && TIMINGS.refresh <= 1000, `refresh ${TIMINGS.refresh}`);
+  assert.ok(TIMINGS.gap >= 1000 / 44, `gap ${TIMINGS.gap}`);
+  assert.ok(TIMINGS.ackBudget < 5000 && TIMINGS.ackBudget >= 1000, `budget ${TIMINGS.ackBudget}`);
+  assert.ok(TIMINGS.storeWait < TIMINGS.ackBudget);
+});

@@ -10,7 +10,7 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "test": "node --test --test-timeout=60000",
+    "test": "node --test --test-timeout=60000 --test-force-exit",
     "audit": "npm audit --omit=dev",
     "cover": "node scripts/cover.mjs",
     "mutants": "node scripts/mutants.mjs",

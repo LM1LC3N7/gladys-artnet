@@ -87,7 +87,7 @@ test('the store basics, and one version in the four places', () => {
       /never\s+been\s+tested\s+with\s+a\s+real\s+(node|device)|jamais\s+été\s+testée\s+avec\s+un\s+vrai\s+(nœud|appareil)/,
     );
     assert.match(docs, /assumed|supposé/);
-    assert.match(docs, /Art-Net™ Designed by and Copyright Artistic Licence Engineering Ltd/);
+    assert.match(docs, /Art-Net™ Designed by and Copyright Artistic Licence\./);
   }
   assert.match(
     read('README.md').replace(/\*\*/g, '').replace(/\s+/g, ' '),
@@ -97,11 +97,8 @@ test('the store basics, and one version in the four places', () => {
 
 test('the Art-Net credit ships with the code; no name in the LICENSE', () => {
   const notices = read('THIRD_PARTY_NOTICES.md');
-  assert.match(notices, /Art-Net™ Designed by and Copyright Artistic Licence Engineering Ltd/);
-  assert.match(
-    read('README.md'),
-    /Art-Net™ Designed by and Copyright Artistic Licence Engineering Ltd/,
-  );
+  assert.match(notices, /Art-Net™ Designed by and Copyright Artistic Licence\./);
+  assert.match(read('README.md'), /Art-Net™ Designed by and Copyright Artistic Licence\./);
   const dockerfile = read('Dockerfile');
   assert.match(dockerfile, /COPY .*LICENSE/);
   assert.match(dockerfile, /COPY .*THIRD_PARTY_NOTICES\.md/);

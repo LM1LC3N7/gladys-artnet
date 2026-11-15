@@ -17,7 +17,7 @@ import { flakyOpen, pollReply, speedClock, startNode, until } from './helpers/no
 const SPEED = 10;
 const dev = (id) => ({ external_id: `ext:artnet:fixture:${id}` });
 const feat = (id, key) => ({ external_id: `ext:artnet:fixture:${id}:${key}` });
-const FIXTURES = '1 rgb Salon; 4 dimmer Bar; 0/10 cct Bureau; 2/1 drgbw Scène';
+const FIXTURES = '0/1 rgb Salon; 0/4 dimmer Bar; 0/10 cct Bureau; 2/1 drgbw Scène';
 const quietLogger = (logs) =>
   Object.fromEntries(
     ['debug', 'info', 'warn', 'error'].map((level) => [
@@ -384,7 +384,7 @@ test('a fixture removed from the configuration goes to 0; the frame never gets s
   await until(() => node.last(0)?.data.length === 12, 2000, 'frame of 12 channels');
   await gladys.fake.configUpdated({
     node_address: gladys.fake.config.node_address,
-    fixtures: '1 rgb Salon',
+    fixtures: '0/1 rgb Salon',
   });
   await set(gladys, 'u0-a1', 'binary', 1);
   await frameIs(node, 0, [255, 255, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
@@ -581,7 +581,7 @@ test('Blackout counts the universes already started, even with no fixture left',
   await set(gladys, 'u2-a1', 'binary', 1);
   await gladys.fake.configUpdated({
     node_address: gladys.fake.config.node_address,
-    fixtures: '1 rgb Salon',
+    fixtures: '0/1 rgb Salon',
   });
   const ack = await gladys.fake.action('blackout');
   assert.match(ack.data.message.en, /2 universe\(s\) of 2/);
@@ -617,7 +617,7 @@ test('port 6454 busy: the status says the frames leave from another port', async
   const node = await startNode();
   const gladys = createFakeGladys({
     selector: 'artnet',
-    config: { node_address: `127.0.0.1:${node.port}`, fixtures: '1 dimmer A' },
+    config: { node_address: `127.0.0.1:${node.port}`, fixtures: '0/1 dimmer A' },
   });
   const clock = speedClock(SPEED);
   const app = new ArtnetApp({
@@ -646,4 +646,196 @@ test('port 6454 busy: the status says the frames leave from another port', async
     'status',
   );
   assert.equal(gladys.fake.connectionStatus.connected, true);
+});
+
+/** A store whose load takes `ms` real milliseconds. */
+function slowStore(data, ms) {
+  const store = memoryStore(data);
+  const load = store.load.bind(store);
+  store.load = () => new Promise((resolve) => setTimeout(() => resolve(load()), ms));
+  return store;
+}
+
+test('before connected: off, Blackout and the scene leave from /data, read at construction', async (t) => {
+  const node = await startNode();
+  const store = memoryStore({
+    node: { host: '127.0.0.1', port: node.port },
+    fixtures: [{ universe: 0, address: 1, profile: 'rgb' }],
+  });
+  const { gladys, app } = await setup(t, { node, store, connect: false });
+  // The SDK relays commands before `connected` (getDevices/getConfig still running).
+  const off = await app.setValue(dev('u0-a1'), feat('u0-a1', 'binary'), 0).then(
+    () => 'sent',
+    (err) => err.message,
+  );
+  assert.equal(off, 'sent');
+  await frameIs(node, 0, [0, 0, 0, 0]);
+  const blackout = await app.blackoutAction();
+  assert.match(blackout.en, /1 universe\(s\) of 1/);
+  await app.blackoutScene();
+  assert.equal(gladys.fake.connectionStatuses.length, 0, 'no status before connected');
+  const on = await app.setValue(dev('u0-a1'), feat('u0-a1', 'binary'), 1).catch((e) => e.message);
+  assert.match(on, /Configuration not read/);
+});
+
+test('a /data read in progress: off and the scene wait for it, then leave', async (t) => {
+  const node = await startNode();
+  const store = slowStore(
+    {
+      node: { host: '127.0.0.1', port: node.port },
+      fixtures: [{ universe: 0, address: 1, profile: 'rgb' }],
+    },
+    100, // real ms: 1 s of the sped-up clock, under the 1.5 s wait
+  );
+  const { gladys } = await setup(t, {
+    node,
+    store,
+    connect: false,
+    getConfig: () => Promise.reject(new Error('HTTP 503')),
+  });
+  await gladys.connect();
+  const off = await set(gladys, 'u0-a1', 'binary', 0);
+  assert.equal(off.success, true, off.error);
+  const scene = await gladys.fake.sceneAction('blackout');
+  assert.equal(scene.success, true, scene.error);
+});
+
+test('/data refusals say which: not read in time, unreadable, fixture not in it', async (t) => {
+  const node = await startNode();
+  const slow = slowStore({ node: { host: '127.0.0.1', port: node.port }, fixtures: [] }, 5000);
+  const a = await setup(t, { node, store: slow, connect: false });
+  const late = await a.app
+    .setValue(dev('u0-a1'), feat('u0-a1', 'binary'), 0)
+    .catch((e) => e.message);
+  assert.match(late, /\/data not read yet/);
+  assert.match((await a.app.blackoutAction()).en, /\/data not read yet/);
+  const broken = memoryStore();
+  broken.unreadable = true;
+  const b = await setup(t, { store: broken, connect: false });
+  await until(() => b.app.storeFailed, 2000, 'store failed');
+  const unreadable = await b.app
+    .setValue(dev('u0-a1'), feat('u0-a1', 'binary'), 0)
+    .catch((e) => e.message);
+  assert.match(unreadable, /\/data unreadable/);
+  assert.match((await b.app.blackoutAction()).en, /\/data unreadable/);
+  const empty = await setup(t, { store: memoryStore(), connect: false });
+  await until(() => empty.app.memory !== undefined, 2000, 'store read');
+  const missing = await empty.app
+    .setValue(dev('u0-a1'), feat('u0-a1', 'binary'), 0)
+    .catch((e) => e.message);
+  assert.match(missing, /not in \/data/);
+  assert.match((await empty.app.blackoutAction()).en, /no fixture known/);
+});
+
+test('the first frame of a universe fails: the others are said off when a later one leaves', async (t) => {
+  const flaky = flakyOpen();
+  const { gladys } = await setup(t, { open: flaky.open });
+  flaky.failing = true;
+  assert.equal((await set(gladys, 'u0-a1', 'binary', 1)).success, false);
+  assert.equal(
+    gladys.fake.lastState('ext:artnet:fixture:u0-a4:binary'),
+    undefined,
+    'not said while nothing left',
+  );
+  flaky.failing = false;
+  await until(
+    () => gladys.fake.lastState('ext:artnet:fixture:u0-a4:binary') === 0,
+    3000,
+    'B said off',
+  );
+  assert.equal(gladys.fake.lastState('ext:artnet:fixture:u0-a10:binary'), 0);
+});
+
+test('an "on" handed to the socket but not confirmed in time is kept, answered "not confirmed"', async (t) => {
+  const held = heldOpen();
+  const { gladys } = await setup(t, { open: held.open });
+  const ack = await set(gladys, 'u0-a1', 'binary', 1);
+  assert.equal(ack.success, false);
+  assert.match(ack.error, /not confirmed/);
+  held.sends[0].answer();
+  await until(() => held.sends.length >= 2, 3000, 'keep-alive');
+  assert.deepEqual(held.sends[1].frame.data.slice(0, 3), [255, 255, 255]);
+});
+
+test('over 32 universes in a session: "on" refused clearly, "off" and Blackout still leave', async (t) => {
+  const { gladys, node } = await setup(t);
+  const address = gladys.fake.config.node_address;
+  for (const base of [0, 16]) {
+    const fixtures = Array.from({ length: 16 }, (_, i) => `${base + i}/1 dimmer F${base + i}`).join(
+      ';',
+    );
+    await gladys.fake.configUpdated({ node_address: address, fixtures });
+    const acks = await Promise.all(
+      Array.from({ length: 16 }, (_, i) => set(gladys, `u${base + i}-a1`, 'binary', 1)),
+    );
+    assert.ok(
+      acks.every((a) => a.success),
+      `universes from ${base}`,
+    );
+  }
+  await gladys.fake.configUpdated({ node_address: address, fixtures: '32/1 dimmer X' });
+  const on = await set(gladys, 'u32-a1', 'binary', 1);
+  assert.equal(on.success, false);
+  assert.match(on.error, /Too many universes started in this session/);
+  const off = await set(gladys, 'u32-a1', 'binary', 0);
+  assert.equal(off.success, true, off.error);
+  await frameZero(node, 32);
+  const blackout = await gladys.fake.action('blackout');
+  assert.match(blackout.data.message.en, /33 universe\(s\) of 33/);
+});
+
+test('Test the node interrupted by the stop: says the integration is stopping', async (t) => {
+  const { gladys, app } = await setup(t);
+  const pending = gladys.fake.action('test_node');
+  await until(() => app.testWaiter, 2000, 'test running');
+  await app.stop();
+  const ack = await pending;
+  assert.match(ack.data.message.en, /stopping/);
+});
+
+test('getConfig failing: the retry delay doubles (5 s, 10 s, 20 s)', async (t) => {
+  const { gladys, app } = await setup(t, {
+    getConfig: () => Promise.reject(new Error('HTTP 500')),
+  });
+  await until(
+    () => gladys.fake.connectionStatuses.some((s) => /in 20 s/.test(s.message?.en)),
+    6000,
+    '20 s',
+  );
+  const delays = gladys.fake.connectionStatuses
+    .map((s) => /tried again in (\d+) s/.exec(s.message?.en ?? '')?.[1])
+    .filter(Boolean);
+  assert.deepEqual(delays.slice(0, 3), ['5', '10', '20']);
+  assert.equal(app.configRead, false);
+});
+
+test('a late getConfig answer never overrides a newer saved configuration, nor runs after stop', async (t) => {
+  let answer;
+  const { gladys, app } = await setup(t, {
+    connect: false,
+    getConfig: () => new Promise((resolve) => (answer = resolve)),
+  });
+  const connecting = gladys.connect();
+  await until(() => answer, 2000, 'getConfig asked');
+  await gladys.fake.configUpdated({
+    node_address: gladys.fake.config.node_address,
+    fixtures: '0/7 dimmer New',
+  });
+  answer({ node_address: gladys.fake.config.node_address, fixtures: '0/1 rgb Old' });
+  await connecting;
+  await new Promise((resolve) => setTimeout(resolve, 50));
+  assert.deepEqual(
+    app.config.fixtures.map((f) => f.id),
+    ['u0-a7'],
+  );
+  answer = undefined;
+  const again = app.connected(() => gladys.getConfig());
+  await until(() => answer, 2000, 'getConfig asked again');
+  await app.stop();
+  answer({ node_address: gladys.fake.config.node_address, fixtures: '0/1 rgb Old' });
+  await again;
+  assert.deepEqual(
+    app.config.fixtures.map((f) => f.id),
+    ['u0-a7'],
+  );
 });

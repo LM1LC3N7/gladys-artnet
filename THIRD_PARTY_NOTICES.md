@@ -8,7 +8,7 @@ which Artistic Licence makes available on a royalty-free basis. As its
 conditions ask, the user guide of a product implementing Art-Net carries the
 credit:
 
-Art-Net™ Designed by and Copyright Artistic Licence Engineering Ltd.
+Art-Net™ Designed by and Copyright Artistic Licence.
 
 No code of another Art-Net implementation is included or ported.
 

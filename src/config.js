@@ -6,7 +6,9 @@
 // The "Fixtures" field is one line, entries separated by `;`:
 //   [<universe>/]<address> <profile> [<name>]
 //   e.g.  1 rgb Living room; 0/4 dimmer Bar; 2/10 drgbw Stage left
-// universe 0..32767 (the 15-bit Port-Address, 0 when left out), address
+// (universe 1, 0 and 2)
+// universe 0..32767 (the 15-bit Port-Address, 1 when left out: Art-Net 4
+// deprecates 0, still accepted when typed), address
 // 1..512 (the first DMX channel of the fixture), profile among PROFILES, name
 // up to 40 characters. An entry that cannot be read, that runs past channel
 // 512 or that overlaps an earlier fixture is skipped and its position shown in
@@ -78,7 +80,7 @@ function cleanName(text) {
 export function parseFixture(entry) {
   const match = /^(?:(\d+)\/)?(\d+)\s+([a-z]+)(?:\s+(.*))?$/i.exec(entry.trim());
   if (!match) return { error: 'syntax' };
-  const [, universeText = '0', addressText, profileText, nameText = ''] = match;
+  const [, universeText = '1', addressText, profileText, nameText = ''] = match;
   const universe = integer(universeText, 0, LIMITS.portAddress);
   if (universe === undefined) return { error: 'universe' };
   const address = integer(addressText, 1, LIMITS.channels);

@@ -9,7 +9,8 @@ and no cloud.
 > simulated node on the same machine. Please report how it behaves with yours.
 > It is not affiliated with Artistic Licence nor with any lighting brand.
 
-Art-Net™ Designed by and Copyright Artistic Licence Engineering Ltd.
+Art-Net™ Designed by and Copyright Artistic Licence. Art-Net is a protocol of
+Artistic Licence Engineering Ltd.
 
 ## What you need
 
@@ -26,8 +27,10 @@ Art-Net™ Designed by and Copyright Artistic Licence Engineering Ltd.
    DMX to the node itself.
 2. **Fixtures**: one entry per fixture, separated by `;`:
    `[universe/]address profile name`. Example:
-   `1 rgb Living room; 0/4 dimmer Bar; 1/10 cct Desk`.
-   - universe: 0 to 32767 (the Port-Address of the node), 0 when left out;
+   `1 rgb Living room; 4 dimmer Bar; 2/10 cct Desk`.
+   - universe: 1 to 32767 (the Port-Address of the node), 1 when left out;
+     0 is accepted when typed (`0/4`): Art-Net 4 deprecates it, but many
+     nodes still use it;
    - address: 1 to 512, the first DMX channel of the fixture;
    - profile: the order of its channels:
 
@@ -40,7 +43,7 @@ Art-Net™ Designed by and Copyright Artistic Licence Engineering Ltd.
      | `drgbw`  | intensity, red, green, blue, white | on/off, brightness, colour            |
      | `cct`    | cold white, warm white             | on/off, brightness, white temperature |
 
-   - name: up to 40 characters (optional: `Fixture 0/4` otherwise).
+   - name: up to 40 characters (optional: `Fixture 1/4` otherwise).
 
    An entry that cannot be read, that runs past channel 512 or that overlaps
    an earlier fixture is skipped: the status gives its position and the
@@ -83,14 +86,18 @@ channels of a universe that are not in the fixtures list are sent at 0.
 blackout") sets every known fixture, and every universe already sent, to 0.
 
 They need no option and no configuration read: the node address and the
-fixtures are also kept in `/data`, so they work right after a restart, before
-Gladys gives the configuration. If a frame cannot leave, the 900 ms keep-alive
-tries it again until it does; when it finally leaves, Gladys is told the
-fixture is off. Their only refusals:
+fixtures are also kept in `/data`, read as soon as the integration starts, so
+they work right after a restart, before Gladys gives the configuration (before
+it is read, they wait up to 1.5 s for a `/data` read in progress). They are not
+held back by the 32-universe bound of a session. If a frame cannot leave, the
+900 ms keep-alive tries it again until it does; when it finally leaves, Gladys
+is told the fixture is off. Their only refusals:
 
 - no node address known (none configured, nothing in `/data`);
-- a fixture known neither by the configuration nor by `/data` ("off" only);
-- no fixture and no universe known at all (Blackout only);
+- "off" only: a fixture not in the configuration; before the configuration is
+  read, a fixture not in `/data`, or `/data` unreadable, or `/data` still not
+  read after 1.5 s;
+- Blackout only: no fixture and no universe known (same cases);
 - the integration is stopping.
 
 If the node address in the configuration becomes invalid, "off" and Blackout
@@ -116,6 +123,9 @@ go to the last valid one.
 
 ## Limits
 
+- At most 32 universes started in one session (after several changes of the
+  configuration): beyond, "on", brightness, colour and temperature are refused
+  until the integration restarts; "off" and Blackout are not.
 - One node. Several nodes, ArtPoll discovery, ArtSync and RDM are not done.
 - 8-bit channels only (no 16-bit "fine" channels), no moving heads, no effects.
 - Nothing is read back: the state is the last command sent.

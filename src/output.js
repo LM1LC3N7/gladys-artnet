@@ -85,13 +85,14 @@ export class Output {
   }
 
   /** Marks a universe changed: `{ promise, waiter }`, the promise answered by the next frame. */
-  touch(universe) {
+  touch(universe, { protective = false } = {}) {
     const waiter = { issued: false };
     if (this.closed) return { promise: Promise.resolve({ sent: false, error: 'closed' }), waiter };
     if (!this.node) return { promise: Promise.resolve({ sent: false, error: 'noNode' }), waiter };
     let u = this.universes.get(universe);
     if (!u) {
-      if (this.universes.size >= LIMITS.universes * 2) {
+      // A bound on the universes of a session, never for "off" and Blackout.
+      if (!protective && this.universes.size >= LIMITS.universes * 2) {
         return { promise: Promise.resolve({ sent: false, error: 'universes' }), waiter };
       }
       u = { seq: 0, lastSentAt: -Infinity, timer: undefined, inFlight: false, dirty: false };
@@ -111,11 +112,19 @@ export class Output {
   schedule(universe, u) {
     if (this.closed || u.inFlight) return;
     if (u.timer !== undefined) this.timers.clearTimeout(u.timer);
-    const wait = Math.max(0, u.lastSentAt + this.timings.gap - this.monotonic());
-    u.timer = this.timers.setTimeout(() => {
-      u.timer = undefined;
-      this.sendFrame(universe, u);
-    }, wait);
+    const arm = () => {
+      const wait = Math.max(0, u.lastSentAt + this.timings.gap - this.monotonic());
+      u.timer = this.timers.setTimeout(() => {
+        u.timer = undefined;
+        // A timer may fire a little early (it counts from the loop's cached time): armed again.
+        if (u.lastSentAt + this.timings.gap - this.monotonic() > 0) {
+          arm();
+          return;
+        }
+        this.sendFrame(universe, u);
+      }, wait);
+    };
+    arm();
   }
 
   async socket() {
@@ -152,7 +161,7 @@ export class Output {
   }
 
   /** Sends one datagram to the node: `{ sent: true }` or `{ sent: false, error }`. */
-  async sendTo(node, packet) {
+  async sendTo(node, packet, onSend = () => {}) {
     let socket;
     try {
       socket = await this.socket();
@@ -164,6 +173,7 @@ export class Output {
         socket.send(packet, node.port, node.host, (err) =>
           resolve(err ? { sent: false, error: codeOf(err) } : { sent: true }),
         );
+        onSend();
       } catch (err) {
         resolve({ sent: false, error: codeOf(err) });
       }
@@ -183,9 +193,16 @@ export class Output {
     } else {
       u.seq = (u.seq % 255) + 1;
       const packet = artDmx({ universe, sequence: u.seq, data: this.frameOf(universe) });
-      result = packet ? await this.sendTo(node, packet) : { sent: false, error: 'frame' };
+      let handed = false;
+      result = packet
+        ? await this.sendTo(node, packet, () => {
+            // The gap is counted from the hand-over to the socket.
+            handed = true;
+            u.lastSentAt = this.monotonic();
+          })
+        : { sent: false, error: 'frame' };
+      if (!handed) u.lastSentAt = this.monotonic();
     }
-    u.lastSentAt = this.monotonic();
     u.inFlight = false;
     if (this.closed) result = result.sent ? result : { sent: false, error: 'closed' };
     for (const w of waiters) w.resolve(result);

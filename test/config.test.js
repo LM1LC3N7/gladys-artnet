@@ -25,6 +25,7 @@ test('node address: one unicast IPv4, port 6454 by default; broadcast, multicast
     '1.2.3.4:70000',
     'a b',
     '1.2.3\r\n.4',
+    '0.1.2.3:x',
   ]) {
     assert.equal(parseAddress(bad).invalid, true, bad);
   }
@@ -34,19 +35,20 @@ test('node address: one unicast IPv4, port 6454 by default; broadcast, multicast
     '10.255.255.255',
     '239.255.0.1',
     '0.0.0.0',
+    '0.1.2.3',
     '192.168.1.0',
   ]) {
     assert.equal(parseAddress(broadcast).broadcast, true, broadcast);
   }
 });
 
-test('fixtures: entries read, universe 0 by default, profile case-insensitive', () => {
+test('fixtures: entries read, universe 1 by default (Art-Net 4 deprecates 0), profile case-insensitive', () => {
   const { fixtures, errors } = parseFixtures(
     ' 1 RGB  Living  room ;0/4 dimmer; 32767/510 cct End ;;',
   );
   assert.deepEqual(errors, []);
   assert.deepEqual(fixtures, [
-    { universe: 0, address: 1, profile: 'rgb', name: 'Living room', id: 'u0-a1' },
+    { universe: 1, address: 1, profile: 'rgb', name: 'Living room', id: 'u1-a1' },
     { universe: 0, address: 4, profile: 'dimmer', name: '', id: 'u0-a4' },
     { universe: 32767, address: 510, profile: 'cct', name: 'End', id: 'u32767-a510' },
   ]);
@@ -89,7 +91,7 @@ test('fixtures: each error has its reason and position; the others are kept', ()
   );
   assert.deepEqual(
     fixtures.map((f) => f.id),
-    ['u0-a1'],
+    ['u1-a1'],
   );
 });
 

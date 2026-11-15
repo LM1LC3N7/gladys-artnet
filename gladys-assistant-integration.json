@@ -59,12 +59,12 @@
         "fr": "Projecteurs"
       },
       "description": {
-        "en": "One entry per fixture, separated by ; written [universe/]address profile name. Universe 0 to 32767 (0 when left out), address 1 to 512 (first DMX channel), profile: dimmer, rgb, rgbw, drgb, drgbw (d = intensity channel first) or cct (cold then warm white).",
-        "fr": "Une entrée par projecteur, séparées par ; sous la forme [univers/]adresse profil nom. Univers 0 à 32767 (0 si omis), adresse 1 à 512 (premier canal DMX), profil : dimmer, rgb, rgbw, drgb, drgbw (d = canal d’intensité en premier) ou cct (blanc froid puis chaud)."
+        "en": "One entry per fixture, separated by ; written [universe/]address profile name. Universe 1 to 32767 (1 when left out; 0 accepted), address 1 to 512 (first DMX channel), profile: dimmer, rgb, rgbw, drgb, drgbw (d = intensity channel first) or cct (cold then warm white).",
+        "fr": "Une entrée par projecteur, séparées par ; sous la forme [univers/]adresse profil nom. Univers 1 à 32767 (1 si omis ; 0 accepté), adresse 1 à 512 (premier canal DMX), profil : dimmer, rgb, rgbw, drgb, drgbw (d = canal d’intensité en premier) ou cct (blanc froid puis chaud)."
       },
       "placeholder": {
-        "en": "e.g. 1 rgb Living room; 0/4 dimmer Bar; 1/10 cct Desk",
-        "fr": "ex. 1 rgb Salon; 0/4 dimmer Bar; 1/10 cct Bureau"
+        "en": "e.g. 1 rgb Living room; 4 dimmer Bar; 2/10 cct Desk",
+        "fr": "ex. 1 rgb Salon; 4 dimmer Bar; 2/10 cct Bureau"
       },
       "required": false,
       "default": ""

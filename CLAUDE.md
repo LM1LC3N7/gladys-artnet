@@ -46,6 +46,9 @@ scripts/            cover.png generator, mutants (scripts/mutants.json)
   unknown to config and /data, stopping. No option, no configuration read,
   no rate refusal in front of them. A change that adds a condition to `off()`,
   `blackout()` or `Output.touch()` needs a test that they still leave.
+- **/data is read at construction** (the SDK emits `connected` only after its
+  own getConfig): before the configuration is read, `off()` and `blackout()`
+  wait up to 1.5 s for that read.
 - **The frame is computed right before each send** from the assumed states:
   nothing older can leave after an "off". A failed "on" is undone (unless a
   newer command replaced it); a failed "off" is kept (the keep-alive retries).

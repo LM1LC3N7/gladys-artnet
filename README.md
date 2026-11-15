@@ -9,7 +9,8 @@ This integration has **never been tested with a real node**: only against a
 simulated node on the same machine. Not affiliated with Artistic Licence nor
 with any lighting brand.
 
-Art-Net™ Designed by and Copyright Artistic Licence Engineering Ltd.
+Art-Net™ Designed by and Copyright Artistic Licence. Art-Net is a protocol of
+Artistic Licence Engineering Ltd.
 
 - User documentation: [English](docs/en.md) · [Français](docs/fr.md)
 - Art-Net never reports a state: Gladys shows the last command sent (assumed

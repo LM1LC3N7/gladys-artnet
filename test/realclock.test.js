@@ -20,7 +20,7 @@ async function start(t, speed) {
   const node = await startNode();
   const gladys = createFakeGladys({
     selector: 'artnet',
-    config: { node_address: `127.0.0.1:${node.port}`, fixtures: '1 dimmer A; 2 dimmer B' },
+    config: { node_address: `127.0.0.1:${node.port}`, fixtures: '0/1 dimmer A; 0/2 dimmer B' },
   });
   const clock = speedClock(speed);
   const app = new ArtnetApp({
@@ -84,4 +84,33 @@ test('real clock: an off between two keep-alives leaves at once, never before th
     const gap = (fresh[i].at - fresh[i - 1].at) * speed;
     assert.ok(gap >= TIMINGS.gap * 0.8, `gap ${Math.round(gap)}`);
   }
+});
+
+test('real clock, sender side: never two frames of a universe within 25 ms', async (t) => {
+  const { Output } = await import('../src/output.js');
+  const times = [];
+  const socket = {
+    send: (p, port, host, cb) => {
+      times.push(performance.now());
+      setImmediate(() => cb(null));
+    },
+    on() {},
+    close() {},
+  };
+  let value = 0;
+  const output = new Output({
+    open: async () => ({ socket, port: 6454 }),
+    frameOf: () => [value & 0xff, 0],
+  });
+  t.after(() => output.close());
+  output.setNode({ host: '192.168.1.60', port: 6454 });
+  const end = performance.now() + 600;
+  while (performance.now() < end) {
+    value += 1;
+    output.touch(0);
+    await new Promise((resolve) => setTimeout(resolve, 1));
+  }
+  const gaps = times.slice(1).map((at, i) => at - times[i]);
+  assert.ok(times.length >= 15, `${times.length} frames`);
+  assert.ok(Math.min(...gaps) >= TIMINGS.gap, `min gap ${Math.min(...gaps).toFixed(2)} ms`);
 });

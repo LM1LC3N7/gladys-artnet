@@ -10,7 +10,8 @@ compte et sans cloud.
 > le vôtre. Elle est sans lien avec Artistic Licence ni avec une marque
 > d’éclairage.
 
-Art-Net™ Designed by and Copyright Artistic Licence Engineering Ltd.
+Art-Net™ Designed by and Copyright Artistic Licence. Art-Net est un protocole
+d’Artistic Licence Engineering Ltd.
 
 ## Ce qu’il faut
 
@@ -28,8 +29,10 @@ Art-Net™ Designed by and Copyright Artistic Licence Engineering Ltd.
    Art-Net 4 envoie le DMX au nœud lui-même.
 2. **Projecteurs** : une entrée par projecteur, séparées par `;` :
    `[univers/]adresse profil nom`. Exemple :
-   `1 rgb Salon; 0/4 dimmer Bar; 1/10 cct Bureau`.
-   - univers : 0 à 32767 (le Port-Address du nœud), 0 si omis ;
+   `1 rgb Salon; 4 dimmer Bar; 2/10 cct Bureau`.
+   - univers : 1 à 32767 (le Port-Address du nœud), 1 si omis ; 0 est
+     accepté s’il est écrit (`0/4`) : Art-Net 4 le déprécie, mais beaucoup de
+     nœuds l’utilisent encore ;
    - adresse : 1 à 512, le premier canal DMX du projecteur ;
    - profil : l’ordre de ses canaux :
 
@@ -42,7 +45,7 @@ Art-Net™ Designed by and Copyright Artistic Licence Engineering Ltd.
      | `drgbw`  | intensité, rouge, vert, bleu, blanc | allumage, luminosité, couleur              |
      | `cct`    | blanc froid, blanc chaud            | allumage, luminosité, température du blanc |
 
-   - nom : 40 caractères au plus (facultatif : `Projecteur 0/4` sinon).
+   - nom : 40 caractères au plus (facultatif : `Projecteur 1/4` sinon).
 
    Une entrée illisible, qui dépasse le canal 512 ou qui chevauche un
    projecteur précédent est ignorée : le statut donne sa position et la raison.
@@ -89,16 +92,19 @@ projecteurs sont envoyés à 0.
 Art-Net ») met à 0 tous les projecteurs connus et tous les univers déjà envoyés.
 
 Ils ne demandent aucune option ni configuration lue : l’adresse du nœud et les
-projecteurs sont aussi gardés dans `/data`, donc ils fonctionnent juste après un
-redémarrage, avant que Gladys donne la configuration. Si une trame ne peut pas
-partir, l’envoi de maintien toutes les 900 ms la réessaie jusqu’à ce qu’elle
-parte ; quand elle part enfin, Gladys apprend que le projecteur est éteint. Leurs
-seuls refus :
+projecteurs sont aussi gardés dans `/data`, lu dès le démarrage de l’intégration,
+donc ils fonctionnent juste après un redémarrage, avant que Gladys donne la
+configuration (avant sa lecture, ils attendent jusqu’à 1,5 s une lecture de
+`/data` en cours). La limite de 32 univers par session ne les retient pas. Si une
+trame ne peut pas partir, l’envoi de maintien toutes les 900 ms la réessaie
+jusqu’à ce qu’elle parte ; quand elle part enfin, Gladys apprend que le
+projecteur est éteint. Leurs seuls refus :
 
 - aucune adresse de nœud connue (aucune configurée, rien dans `/data`) ;
-- un projecteur inconnu de la configuration et de `/data` (« éteindre »
-  seulement) ;
-- aucun projecteur ni univers connu (Blackout seulement) ;
+- « éteindre » seulement : un projecteur absent de la configuration ; avant sa
+  lecture, un projecteur absent de `/data`, ou `/data` illisible, ou `/data`
+  toujours pas lu après 1,5 s ;
+- Blackout seulement : aucun projecteur ni univers connu (mêmes cas) ;
 - l’intégration est en train de s’arrêter.
 
 Si l’adresse du nœud devient invalide dans la configuration, « éteindre » et
@@ -126,6 +132,9 @@ Blackout partent vers la dernière adresse valide.
 
 ## Limites
 
+- 32 univers au plus démarrés dans une session (après plusieurs changements de
+  configuration) : au-delà, allumage, luminosité, couleur et température sont
+  refusés jusqu’au redémarrage de l’intégration ; « éteindre » et Blackout non.
 - Un seul nœud. Plusieurs nœuds, la découverte ArtPoll, ArtSync et RDM ne sont
   pas faits.
 - Canaux 8 bits seulement (pas de canaux « fins » 16 bits), pas de lyres, pas

@@ -44,6 +44,8 @@ export const TIMINGS = {
   configRetryMax: 5 * MINUTE,
   /** /data unreadable: read again every 10 s. */
   storeRetry: 10 * SECOND,
+  /** Before the configuration is read, "off" and Blackout wait this long at most for /data. */
+  storeWait: 1500,
   /** "Test the node": wait for the ArtPollReply, then refuse a new test for 10 s. */
   testWait: 3 * SECOND,
   testSpacing: 10 * SECOND,

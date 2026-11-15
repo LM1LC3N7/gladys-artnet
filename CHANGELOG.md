@@ -14,11 +14,15 @@ the notes of the version's GitHub Release.
 
 - First version: DMX fixtures through one Art-Net node (UDP 6454, unicast) as
   Gladys lights. Profiles dimmer, rgb, rgbw, drgb, drgbw and cct, typed in one
-  "Fixtures" field (`[universe/]address profile name`).
+  "Fixtures" field (`[universe/]address profile name`, universe 1 when left
+  out: Art-Net 4 deprecates 0, still accepted when typed).
 - Assumed state (Art-Net never reports one), said on each fixture's badge.
 - Frames of a universe: 40 a second at most, keep-alive every 900 ms.
 - "Off" and Blackout (button and scene action) that need no configuration read
   (node and fixtures kept in `/data`), sent again by the keep-alive until they
   leave.
+- /data read as soon as the integration starts: "off" and Blackout work
+  before Gladys gives the configuration.
 - "Test the node" button (ArtPoll / ArtPollReply).
+- CI: timeouts on the jobs, tests run with `--test-force-exit`.
 - Documentation in English and French, with the Art-Net credit.

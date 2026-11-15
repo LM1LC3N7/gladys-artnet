@@ -81,6 +81,8 @@ export class ArtnetApp {
     this.sendErrors = new Map();
     /** fixture ids whose "off" did not reach Gladys as a state yet. */
     this.offPending = new Set();
+    /** Universes whose first frame left in this session. */
+    this.announced = new Set();
     this.lastBoundPort = undefined;
     /**
      * fixture id -> the state a failed command falls back to: the last one that
@@ -104,6 +106,12 @@ export class ArtnetApp {
       onResult: (universe, result) => this.frameResult(universe, result),
       onMessage: (message, remote) => this.message(message, remote),
     });
+    /** Whether `connected` was seen (the status waits for it). */
+    this.online = false;
+    // /data is read at once, before the SDK even connects: "off" and Blackout
+    // work from the first command Gladys relays (the SDK emits `connected` only
+    // after its own getDevices() and getConfig() succeed).
+    this.loadMemory();
   }
 
   // --- lifecycle --------------------------------------------------------------
@@ -111,6 +119,7 @@ export class ArtnetApp {
   /** After every connection to Gladys: storage, configuration, Discovery, badges, status. */
   async connected(getConfig) {
     this.stopped = false;
+    this.online = true;
     this.lastStatus = '';
     this.lastBadges = '';
     if (this.memory === undefined) this.loadMemory();
@@ -201,6 +210,8 @@ export class ArtnetApp {
   /** One read at a time; unreadable: read again every 10 s, never taken as empty. */
   loadMemory() {
     if (this.loading) return this.loading;
+    if (this.storeTimer !== undefined) this.timers.clearTimeout(this.storeTimer);
+    this.storeTimer = undefined;
     this.loading = (async () => {
       const result = await this.store.load().catch(() => ({ ok: false }));
       this.loading = undefined;
@@ -273,6 +284,17 @@ export class ArtnetApp {
     const previous = this.sendErrors.get(universe);
     if (result.sent) this.sendErrors.delete(universe);
     else this.sendErrors.set(universe, result.error);
+    if (result.sent && !this.announced.has(universe)) {
+      // First frame of this universe that LEFT in this session: its fixtures never
+      // commanded are now at 0, Gladys learns it.
+      this.announced.add(universe);
+      for (const [id] of this.framed.get(universe) ?? []) {
+        const f = this.fixtures().find((x) => x.id === id);
+        if (!f || this.states.has(id)) continue;
+        this.states.set(id, { ...DEFAULT_STATE, version: 0 });
+        this.publishAssumed(f, FEATURES.BINARY, 0);
+      }
+    }
     if (result.sent) {
       // What left is the fallback of a later failure, unless an "off" is newer.
       for (const [id, state] of this.framed.get(universe) ?? []) {
@@ -301,9 +323,8 @@ export class ArtnetApp {
    * Touches a universe and waits for its next frame, within the answer budget:
    * `{ sent, error, issued }` (issued: the frame was handed to the socket).
    */
-  async send(universe) {
-    const fresh = !this.output.universes.has(universe);
-    const { promise, waiter } = this.output.touch(universe);
+  async send(universe, { protective = false } = {}) {
+    const { promise, waiter } = this.output.touch(universe, { protective });
     let timer;
     const deadline = new Promise((resolve) => {
       timer = this.timers.setTimeout(
@@ -313,14 +334,6 @@ export class ArtnetApp {
     });
     const result = await Promise.race([promise, deadline]);
     this.timers.clearTimeout(timer);
-    if (result.sent && fresh) {
-      // First frame of this universe in this session: its fixtures never commanded are now at 0.
-      for (const f of this.fixtures().filter((x) => x.universe === universe)) {
-        if (this.states.has(f.id)) continue;
-        this.states.set(f.id, { ...DEFAULT_STATE, version: 0 });
-        this.publishAssumed(f, FEATURES.BINARY, 0);
-      }
-    }
     return { ...result, issued: waiter.issued };
   }
 
@@ -361,7 +374,7 @@ export class ArtnetApp {
   }
 
   async publishStatus() {
-    if (this.stopped) return;
+    if (this.stopped || !this.online) return;
     const [ok, message] = this.statusNow();
     const key = JSON.stringify([ok, message]);
     if (key === this.lastStatus) return;
@@ -375,7 +388,7 @@ export class ArtnetApp {
   }
 
   async publishBadges() {
-    if (this.stopped) return;
+    if (this.stopped || !this.online) return;
     const transport = this.sendErrors.size > 0 ? 'unreachable' : 'local';
     const entries = this.config.fixtures.slice(0, 100).map((f) => ({
       external_id: fixtureIds(this.gladys, f).device,
@@ -457,9 +470,38 @@ export class ArtnetApp {
         const fallback = this.safe.get(fixture.id) ?? DEFAULT_STATE;
         this.states.set(fixture.id, { ...fallback, version: (this.seq += 1) });
       }
+      if (result.error === 'universes') throw commandError(ERRORS.universes);
       throw commandError(result.error === 'closed' ? ERRORS.closed : ERRORS.unsent(result.error));
     }
     if (key !== FEATURES.BINARY) await this.publishAssumed(fixture, FEATURES.BINARY, 1);
+  }
+
+  /**
+   * Before the configuration is read, a protective command waits for a /data
+   * read in progress (the one started at construction), 1.5 s at most.
+   */
+  async memoryRead() {
+    if (this.configRead || this.memory !== undefined || !this.loading) return;
+    let timer;
+    await Promise.race([
+      this.loading,
+      new Promise((resolve) => {
+        timer = this.timers.setTimeout(resolve, this.timings.storeWait);
+      }),
+    ]);
+    this.timers.clearTimeout(timer);
+  }
+
+  /** Why a fixture is not known (configuration not read, /data not read, unreadable or without it). */
+  unknownReason() {
+    if (this.configRead) return ERRORS.notListed;
+    if (this.memory !== undefined) return ERRORS.notInStore;
+    return this.storeFailed ? ERRORS.storeUnreadable : ERRORS.storeNotRead;
+  }
+
+  blackoutNothing() {
+    if (this.configRead || this.memory !== undefined) return T.blackoutNothing;
+    return this.storeFailed ? T.blackoutStoreUnreadable : T.blackoutStoreNotRead;
   }
 
   /** A fixture assumed off at once; a later failed command falls back to it. */
@@ -472,14 +514,14 @@ export class ArtnetApp {
   /** The protective command: refused only when no node or no such fixture is known. */
   async off(target, { fromBrightness = false } = {}) {
     if (this.stopped) throw commandError(ERRORS.closed);
+    await this.memoryRead();
+    if (this.stopped) throw commandError(ERRORS.closed);
     const fixture = this.fixtures().find((f) => f.id === target.id);
-    if (!fixture) {
-      throw commandError(this.configRead ? ERRORS.notListed : ERRORS.configUnread);
-    }
+    if (!fixture) throw commandError(this.unknownReason());
     if (!this.protectiveNode()) throw commandError(ERRORS.notConfigured);
     this.output.setNode(this.protectiveNode());
     this.setOff(fixture);
-    const result = await this.send(fixture.universe);
+    const result = await this.send(fixture.universe, { protective: true });
     if (result.sent) {
       this.offPending.delete(fixture.id);
       if (fromBrightness) await this.publishAssumed(fixture, FEATURES.BINARY, 0);
@@ -494,9 +536,11 @@ export class ArtnetApp {
   /** Every fixture known at 0, every universe started or known sent at once. Never refused but for no node. */
   async blackout() {
     if (this.stopped) return { ok: false, message: T.closed };
+    await this.memoryRead();
+    if (this.stopped) return { ok: false, message: T.closed };
     const fixtures = this.fixtures();
     const universes = [...new Set([...fixtures.map((f) => f.universe), ...this.output.active()])];
-    if (universes.length === 0) return { ok: false, message: T.blackoutNothing };
+    if (universes.length === 0) return { ok: false, message: this.blackoutNothing() };
     const node = this.protectiveNode();
     if (!node) return { ok: false, message: T.blackoutNoNode };
     this.output.setNode(node);
@@ -504,7 +548,7 @@ export class ArtnetApp {
       this.setOff(f);
       this.offPending.add(f.id);
     }
-    const results = await Promise.all(universes.map((u) => this.send(u)));
+    const results = await Promise.all(universes.map((u) => this.send(u, { protective: true })));
     const sent = results.filter((r) => r.sent).length;
     for (const f of fixtures) {
       if (!results[universes.indexOf(f.universe)].sent) continue;
@@ -555,6 +599,11 @@ export class ArtnetApp {
       timer = this.timers.setTimeout(() => resolve(undefined), this.timings.testWait);
     });
     const sent = await this.output.sendTo(node, artPoll());
+    if (this.stopped) {
+      this.timers.clearTimeout(timer);
+      this.testWaiter = undefined;
+      return T.closed;
+    }
     if (!sent.sent) {
       this.timers.clearTimeout(timer);
       this.testWaiter = undefined;
@@ -564,7 +613,7 @@ export class ArtnetApp {
     this.timers.clearTimeout(timer);
     this.testWaiter = undefined;
     await this.publishStatus();
-    if (this.stopped) return T.testNoReply(node);
+    if (this.stopped) return T.closed;
     return answer ? T.testOk(node, answer) : T.testNoReply(node);
   }
 }

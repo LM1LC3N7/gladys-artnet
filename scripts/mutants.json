@@ -50,8 +50,8 @@
   {
     "name": "fixtures never commanded not said off on the first frame",
     "file": "src/app.js",
-    "from": "        this.publishAssumed(f, FEATURES.BINARY, 0);\n      }\n    }\n    return { ...result, issued: waiter.issued };",
-    "to": "      }\n    }\n    return { ...result, issued: waiter.issued };"
+    "from": "        this.states.set(id, { ...DEFAULT_STATE, version: 0 });\n        this.publishAssumed(f, FEATURES.BINARY, 0);",
+    "to": "        this.states.set(id, { ...DEFAULT_STATE, version: 0 });"
   },
   {
     "name": "a late off not said to Gladys",
@@ -105,7 +105,9 @@
     "name": "no gap between frames",
     "file": "src/output.js",
     "from": "const wait = Math.max(0, u.lastSentAt + this.timings.gap - this.monotonic());",
-    "to": "const wait = 0;"
+    "to": "const wait = 0;",
+    "equivalent": true,
+    "why": "the timer callback checks the gap again and re-arms (the M2 fix); the mutant \"an early timer sends before the gap\" removes that check and is killed"
   },
   {
     "name": "no keep-alive",
@@ -196,5 +198,71 @@
     "file": "src/app.js",
     "from": "if (state.version >= (this.safe.get(id)?.version ?? -1)) this.safe.set(id, state);",
     "to": "void state;"
+  },
+  {
+    "name": "/data not read at construction",
+    "file": "src/app.js",
+    "from": "    // after its own getDevices() and getConfig() succeed).\n    this.loadMemory();",
+    "to": "    // after its own getDevices() and getConfig() succeed)."
+  },
+  {
+    "name": "off does not wait for a /data read in progress",
+    "file": "src/app.js",
+    "from": "    if (this.configRead || this.memory !== undefined || !this.loading) return;",
+    "to": "    return;"
+  },
+  {
+    "name": "off and Blackout held back by the universe bound",
+    "file": "src/output.js",
+    "from": "if (!protective && this.universes.size >= LIMITS.universes * 2) {",
+    "to": "if (this.universes.size >= LIMITS.universes * 2) {"
+  },
+  {
+    "name": "universe bound halved",
+    "file": "src/output.js",
+    "from": "if (!protective && this.universes.size >= LIMITS.universes * 2) {",
+    "to": "if (!protective && this.universes.size >= LIMITS.universes) {"
+  },
+  {
+    "name": "fixtures said off although the first frame failed",
+    "file": "src/app.js",
+    "from": "if (result.sent && !this.announced.has(universe)) {",
+    "to": "if (!this.announced.has(universe)) {"
+  },
+  {
+    "name": "an early timer sends before the gap",
+    "file": "src/output.js",
+    "from": "if (u.lastSentAt + this.timings.gap - this.monotonic() > 0) {",
+    "to": "if (false) {"
+  },
+  {
+    "name": "an unconfirmed on is undone",
+    "file": "src/app.js",
+    "from": "if (result.issued && result.timedOut) throw commandError(ERRORS.unconfirmed);",
+    "to": ""
+  },
+  {
+    "name": "getConfig delay not doubled",
+    "file": "src/app.js",
+    "from": "this.configDelay = Math.min(this.timings.configRetryMax, delay * 2);",
+    "to": "this.configDelay = delay;"
+  },
+  {
+    "name": "a late getConfig applied",
+    "file": "src/app.js",
+    "from": "    if (this.stopped || generation !== this.generation) return;\n    this.configError = undefined;",
+    "to": "    this.configError = undefined;"
+  },
+  {
+    "name": "test interrupted by the stop says no reply",
+    "file": "src/app.js",
+    "from": "    if (this.stopped) {\n      this.timers.clearTimeout(timer);\n      this.testWaiter = undefined;\n      return T.closed;\n    }",
+    "to": ""
+  },
+  {
+    "name": "stop does not close the output",
+    "file": "src/app.js",
+    "from": "    this.output.close();\n    await this.loading;",
+    "to": "    await this.loading;"
   }
 ]

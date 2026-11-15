@@ -12,7 +12,7 @@
 //   ArtPollReply (read only, 207 bytes or more): IP at 10, ShortName at 26
 //            (18 bytes), LongName at 44 (64 bytes).
 //
-// Art-Net(TM) Designed by and Copyright Artistic Licence Engineering Ltd.
+// Art-Net(TM) Designed by and Copyright Artistic Licence.
 // -----------------------------------------------------------------------------
 
 import { LIMITS, OPCODES, PROTOCOL_VERSION } from './constants.js';

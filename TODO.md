@@ -36,19 +36,32 @@ up to date at the end of every milestone.
 - **SDK `^0.16.0`** (latest on npm on 2026-11-15).
 - **Reference**: the Art-Net 4 specification of Artistic Licence (revision
   1.4dp, 2025-10-23), royalty-free; the credit "Art-Net™ Designed by and
-  Copyright Artistic Licence Engineering Ltd" is in the docs, README and
-  THIRD_PARTY_NOTICES. dmxnet (MIT) was only named as an example in the lot;
+  Copyright Artistic Licence" (exact text of the specification's Credits
+  section) is in the docs, README and THIRD_PARTY_NOTICES; the company name
+  (Artistic Licence Engineering Ltd) goes in a separate sentence. dmxnet (MIT) was only named as an example in the lot;
   no code of it or of any other implementation is used.
-- **Open point for Louis**: the Art-Net conditions also say "Any product that
-  implements Art-Net requires an OEM Code from Artistic Licence" (free
-  application on art-net.org.uk). The packets sent here (ArtDmx, the 14-byte
-  ArtPoll) carry no OEM field and the integration never sends an ArtPollReply,
-  but asking for a code before the first release is the safe reading.
+- **Open point for Louis (OEM code)**: the cover page of the specification
+  asks "any manufacturer who implements this protocol" to apply for an OemCode
+  (free, art-net.org.uk), and the site says any product implementing Art-Net
+  requires one. The packets sent here (ArtDmx, the 14-byte ArtPoll) carry no
+  OEM field and no ArtPollReply is sent, but the requirement targets the
+  implementer, not a packet. Whether a free integration is a "manufacturer" is
+  Louis's call; asking for a code before the first release is the safe
+  reading. A fully compliant Art-Net 4 controller (ArtPollReply to every
+  ArtPoll, ArtPoll every 2.5-3 s, ArtDmx to subscribers only) would need one
+  anyway (milestone 3).
 - **Unicast only**: Art-Net 4 forbids broadcasting ArtDmx; broadcast, multicast
   and network addresses are refused in the configuration and in /data.
 - **No subscription check (v1)**: frames go to the configured node without
   checking (ArtPoll) that it subscribes to the universe; the user typed the
   node and the universe.
+- **Universe 1 when left out** (r1): Art-Net 4 gives Port-Address 1..32767 as
+  the valid range and deprecates 0; 0 stays accepted when typed (`0/4`), since
+  many nodes still use it.
+- **/data read at construction** (r1): the SDK 0.16 relays commands as soon as
+  it is authenticated but emits `connected` only after its own getDevices()
+  and getConfig() succeed; "off" and Blackout wait up to 1.5 s for a /data
+  read in progress before the configuration is read.
 - **Fixtures in one string field**: the config schema has no list type; one
   line `[universe/]address profile name` separated by `;`. External id =
   universe + start address (frozen); a name or profile change keeps the device.
