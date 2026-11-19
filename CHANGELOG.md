@@ -10,6 +10,8 @@ the notes of the version's GitHub Release.
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-11-19
+
 ### Added
 
 - First version: DMX fixtures through one Art-Net node (UDP 6454, unicast) as
@@ -26,3 +28,6 @@ the notes of the version's GitHub Release.
 - "Test the node" button (ArtPoll / ArtPollReply).
 - CI: timeouts on the jobs, tests run with `--test-force-exit`.
 - Documentation in English and French, with the Art-Net credit.
+
+[Unreleased]: https://github.com/LM1LC3N7/gladys-artnet/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/LM1LC3N7/gladys-artnet/releases/tag/v0.1.1

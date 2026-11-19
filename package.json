@@ -1,6 +1,6 @@
 {
   "name": "gladys-artnet",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "description": "Gladys Assistant external integration for DMX stage lighting over Art-Net (UDP 6454), on the local network. Unofficial.",
   "type": "module",
