@@ -40,16 +40,11 @@ up to date at the end of every milestone.
   section) is in the docs, README and THIRD_PARTY_NOTICES; the company name
   (Artistic Licence Engineering Ltd) goes in a separate sentence. dmxnet (MIT) was only named as an example in the lot;
   no code of it or of any other implementation is used.
-- **Open point for Louis (OEM code)**: the cover page of the specification
-  asks "any manufacturer who implements this protocol" to apply for an OemCode
-  (free, art-net.org.uk), and the site says any product implementing Art-Net
-  requires one. The packets sent here (ArtDmx, the 14-byte ArtPoll) carry no
-  OEM field and no ArtPollReply is sent, but the requirement targets the
-  implementer, not a packet. Whether a free integration is a "manufacturer" is
-  Louis's call; asking for a code before the first release is the safe
-  reading. A fully compliant Art-Net 4 controller (ArtPollReply to every
-  ArtPoll, ArtPoll every 2.5-3 s, ArtDmx to subscribers only) would need one
-  anyway (milestone 3).
+- **OEM code**: Louis decided on 2026-11-19 to publish v1 without one. The
+  packets sent (ArtDmx, the 14-byte ArtPoll) carry no OEM field and no
+  ArtPollReply is sent. A fully compliant Art-Net 4 controller (ArtPollReply to
+  every ArtPoll, ArtPoll every 2.5-3 s, ArtDmx to subscribers only) would need
+  one (milestone 3): ask Louis again before that work.
 - **Unicast only**: Art-Net 4 forbids broadcasting ArtDmx; broadcast, multicast
   and network addresses are refused in the configuration and in /data.
 - **No subscription check (v1)**: frames go to the configured node without
